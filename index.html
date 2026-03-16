@@ -432,8 +432,7 @@ function updateBadge(key) {
   const card = document.getElementById("card-" + key);
   const val = scores[key];
   if (val !== null) {
-    const display = val === 10 ? "X" : String(val);
-    badge.textContent = game.abbr + display;
+    badge.textContent = game.abbr + formatScore(val);
     badge.style.color = game.color;
     card.classList.add("done");
   } else {
@@ -447,7 +446,7 @@ function updatePreview() {
   const parts = GAMES.map(g => {
     const v = scores[g.key];
     if (v === null) return null;
-    return g.abbr + (v === 10 ? "X" : String(v));
+    return g.abbr + formatScore(v);
   }).filter(Boolean);
   const str = parts.join(" ");
   document.getElementById("preview-string").textContent = str || "—";
@@ -479,10 +478,10 @@ async function pasteScore(gameKey, parseType) {
 
     if (val !== null) {
       scores[gameKey] = val;
-      const display = val === 10 ? "X" : String(val);
+      const display = val === 10 ? "10 (missed all)" : val === 0 ? "X (unavailable)" : String(val);
       hint.className = "parse-hint";
       hint.textContent = "✓ Parsed: " + display;
-      document.getElementById("sel-" + gameKey).value = val === 10 ? "10" : String(val);
+      document.getElementById("sel-" + gameKey).value = String(val);
       updateBadge(gameKey);
       updatePreview();
     } else {
