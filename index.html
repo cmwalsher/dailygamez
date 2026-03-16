@@ -258,7 +258,8 @@
               <option value="1">1</option><option value="2">2</option>
               <option value="3">3</option><option value="4">4</option>
               <option value="5">5</option><option value="6">6</option>
-              <option value="10">X (missed)</option>
+              <option value="10">10 (missed all)</option>
+              <option value="0">X (unavailable)</option>
             </select>
           </div>
         </div>
@@ -286,7 +287,8 @@
               <option value="1">1</option><option value="2">2</option>
               <option value="3">3</option><option value="4">4</option>
               <option value="5">5</option><option value="6">6</option>
-              <option value="10">X (missed)</option>
+              <option value="10">10 (missed all)</option>
+              <option value="0">X (unavailable)</option>
             </select>
           </div>
         </div>
@@ -314,7 +316,8 @@
               <option value="1">1</option><option value="2">2</option>
               <option value="3">3</option><option value="4">4</option>
               <option value="5">5</option><option value="6">6</option>
-              <option value="10">X (missed)</option>
+              <option value="10">10 (missed all)</option>
+              <option value="0">X (unavailable)</option>
             </select>
           </div>
         </div>
@@ -342,7 +345,8 @@
               <option value="1">1</option><option value="2">2</option>
               <option value="3">3</option><option value="4">4</option>
               <option value="5">5</option><option value="6">6</option>
-              <option value="10">X (missed)</option>
+              <option value="10">10 (missed all)</option>
+              <option value="0">X (unavailable)</option>
             </select>
           </div>
         </div>
@@ -498,18 +502,27 @@ function parseWordle(text) {
 }
 
 function parseFramed(text) {
-  const m = text.match(/Framed[\s\S]*?(\d+|X)\/6/i);
-  if (!m) return null;
-  return m[1] === "X" ? 10 : parseInt(m[1]);
+  // Framed uses emoji grid: 🎥 🟥 🟥 🟥 🟥 🟥 🟩
+  // Strip the 🎥 camera emoji and spaces, then count reds before green
+  if (!text.includes("Framed")) return null;
+  const chars = [...text];
+  // Filter to only the result squares (ignore 🎥 camera)
+  const squares = chars.filter(c => ["🟥","🟩","🟨","⬛"].includes(c));
+  if (!squares.length) return null;
+  const greenIdx = squares.findIndex(c => c === "🟩");
+  if (greenIdx === -1) return 10; // all red = missed
+  return greenIdx + 1;
 }
 
 function parseHeardle(text) {
+  // Strip leading speaker/sound emoji (🔈🔇🔉🔊) then count result squares
+  // e.g. 🔈⬛️⬛️⬛️⬛️⬛️🟩 — strip 🔈, count ⬛ before 🟩 = 6
   const chars = [...text];
-  const greenIdx = chars.findIndex(c => c === "🟩" || c === "✅");
-  if (greenIdx === -1) {
-    const hasEmoji = chars.some(c => ["🟥","🟨","⬛","❌","🔇"].includes(c));
-    return hasEmoji ? 10 : null;
-  }
+  // Filter to only result squares, ignoring speaker emojis and variation selectors
+  const squares = chars.filter(c => ["🟥","🟩","🟨","⬛️","⬛","❌","✅"].includes(c));
+  if (!squares.length) return null;
+  const greenIdx = squares.findIndex(c => c === "🟩" || c === "✅");
+  if (greenIdx === -1) return 10; // all wrong = missed
   return greenIdx + 1;
 }
 
@@ -576,18 +589,28 @@ async function fetchLeaderboard() {
 }
 
 function rowTotal(row) {
-  return (row.wordle || 0) + (row.framed || 0) + (row.heardle_90s || 0) + (row.heardle_00s || 0);
+  // 0 = unavailable (excluded from total), 10 = missed all guesses
+  return GAMES.reduce((sum, g) => {
+    const v = row[g.key];
+    if (v === null || v === undefined || v === 0) return sum;
+    return sum + v;
+  }, 0);
 }
 
 function dayWinner(rows) {
-  const complete = rows.filter(r => r.wordle && r.framed && r.heardle_90s && r.heardle_00s);
+  // A row counts as complete if all 4 games have a value (including 0=unavailable)
+  const complete = rows.filter(r =>
+    r.wordle !== null && r.framed !== null &&
+    r.heardle_90s !== null && r.heardle_00s !== null
+  );
   if (!complete.length) return null;
   return complete.reduce((best, r) => rowTotal(r) < rowTotal(best) ? r : best);
 }
 
 function formatScore(val) {
   if (val === null || val === undefined) return "-";
-  if (val === 10) return "X";
+  if (val === 0) return "X";   // Unavailable = X in display
+  if (val === 10) return "10"; // Missed all guesses = 10
   return String(val);
 }
 
