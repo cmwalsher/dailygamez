@@ -539,7 +539,7 @@ async function copyScores() {
 
 async function saveScores() {
   if (!currentPlayer) return;
-  const today = new Date().toISOString().split("T")[0];
+  const today = getPSTDate();
   const payload = {
     player: currentPlayer.id,
     score_date: today,
@@ -613,8 +613,12 @@ function formatScore(val) {
   return String(val);
 }
 
+function getPSTDate() {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+}
+
 function renderToday() {
-  const today = new Date().toISOString().split("T")[0];
+  const today = getPSTDate();
   const todayRows = allScores.filter(r => r.score_date === today);
   const container = document.getElementById("today-leaderboard");
 
