@@ -204,49 +204,6 @@
     .standings-wins { font-family: 'Space Mono', monospace; font-size: 1rem; font-weight: 700; color: #39ff85; }
     .no-data { text-align: center; padding: 40px 0; color: #5a5f70; font-family: 'Space Mono', monospace; font-size: 0.8rem; }
     .game-breakdown-row { padding: "4px 0"; display: flex; align-items: center; gap: 8px; }
-
-    /* PASSWORD GATE */
-    #auth-gate {
-      position: fixed; inset: 0;
-      background: #0d0f14;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      z-index: 9999; padding: 32px;
-    }
-    #auth-gate h2 {
-      font-size: 2rem; font-weight: 800;
-      color: #fff; margin-bottom: 6px;
-    }
-    #auth-gate h2 span { color: #39ff85; }
-    #auth-gate p {
-      font-family: 'Space Mono', monospace;
-      font-size: 0.75rem; color: #5a5f70;
-      margin-bottom: 32px; text-align: center;
-      letter-spacing: 1px;
-    }
-    #auth-input {
-      width: 100%; max-width: 320px;
-      padding: 14px 16px; border-radius: 12px;
-      border: 2px solid #1e2130; background: #161820;
-      color: #e8eaf0; font-family: 'Space Mono', monospace;
-      font-size: 1rem; outline: none; text-align: center;
-      letter-spacing: 3px; margin-bottom: 12px;
-    }
-    #auth-input:focus { border-color: #39ff85; }
-    #auth-btn {
-      width: 100%; max-width: 320px;
-      padding: 14px; border-radius: 12px; border: none;
-      background: #39ff85; color: #0d0f14;
-      font-family: 'Syne', sans-serif; font-weight: 800;
-      font-size: 1rem; cursor: pointer;
-    }
-    #auth-error {
-      font-family: 'Space Mono', monospace;
-      font-size: 0.75rem; color: #ff6b6b;
-      margin-top: 10px; text-align: center;
-      min-height: 20px;
-    }
-  
   </style>
 </head>
 <body>
@@ -423,36 +380,6 @@
 </div>
 
 <script>
-
-const AUTH_COOKIE = "dg_auth";
-const AUTH_PASS = "boloboyz";
-
-function getCookie(name) {
-  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-  return match ? match[2] : null;
-}
-
-function setCookie(name, value, days) {
-  const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  document.cookie = name + "=" + value + "; expires=" + expires + "; path=/";
-}
-
-function checkAuth() {
-  const val = document.getElementById("auth-input").value.trim().toLowerCase();
-  if (val === AUTH_PASS) {
-    setCookie(AUTH_COOKIE, btoa(AUTH_PASS), 365);
-    document.getElementById("auth-gate").style.display = "none";
-  } else {
-    document.getElementById("auth-error").textContent = "Wrong password. Try again.";
-    document.getElementById("auth-input").value = "";
-  }
-}
-
-// On load — check cookie
-if (getCookie(AUTH_COOKIE) === btoa(AUTH_PASS)) {
-  document.getElementById("auth-gate").style.display = "none";
-}
-
 const SUPABASE_URL = "https://prvrmmwicuionzuzmfnw.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBydnJtbXdpY3Vpb256dXptZm53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2ODkyMDEsImV4cCI6MjA4OTI2NTIwMX0.L2iGKoOOqwDt4158ca4g5pXbcBA_zyxeQRsJy1wQlNQ";
 
@@ -669,17 +596,14 @@ function rowTotal(row) {
   }, 0);
 }
 
-function dayResult(rows) {
-  // Returns { winners: [row,...], tied: bool }
+function dayWinner(rows) {
   // A row counts as complete if all 4 games have a value (including 0=unavailable)
   const complete = rows.filter(r =>
     r.wordle !== null && r.framed !== null &&
     r.heardle_90s !== null && r.heardle_00s !== null
   );
-  if (!complete.length) return { winners: [], tied: false };
-  const best = Math.min(...complete.map(r => rowTotal(r)));
-  const winners = complete.filter(r => rowTotal(r) === best);
-  return { winners, tied: winners.length > 1 };
+  if (!complete.length) return null;
+  return complete.reduce((best, r) => rowTotal(r) < rowTotal(best) ? r : best);
 }
 
 function formatScore(val) {
@@ -703,25 +627,19 @@ function renderToday() {
     return;
   }
 
-  const result = dayResult(todayRows);
-  const winnerIds = result.winners.map(r => r.player);
+  const winner = dayWinner(todayRows);
+  const winnerPlayer = winner ? PLAYERS.find(p => p.id === winner.player) : null;
   const sorted = [...todayRows].sort((a, b) => rowTotal(a) - rowTotal(b));
 
   let html = '<div class="lb-day-card"><div class="lb-day-header">';
   html += `<span class="lb-day-date">${new Date(today + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</span>`;
-  if (result.tied && result.winners.length) {
-    const tiedEmojis = result.winners.map(r => PLAYERS.find(p => p.id === r.player)?.emoji).join("");
-    html += `<span class="lb-winner-badge">👔 ${tiedEmojis} TIE</span>`;
-  } else if (result.winners.length === 1) {
-    const wp = PLAYERS.find(p => p.id === result.winners[0].player);
-    if (wp) html += `<span class="lb-winner-badge">🏆 ${wp.emoji} ${wp.label}</span>`;
-  }
+  if (winnerPlayer) html += `<span class="lb-winner-badge">🏆 ${winnerPlayer.emoji} ${winnerPlayer.label}</span>`;
   html += '</div>';
 
   sorted.forEach(row => {
     const p = PLAYERS.find(x => x.id === row.player);
     if (!p) return;
-    const isWinner = winnerIds.includes(row.player);
+    const isWinner = winner && winner.player === row.player;
     html += `<div class="lb-player-row">
       <span class="lb-player-emoji">${p.emoji}</span>
       <div class="lb-scores">`;
@@ -737,7 +655,7 @@ function renderToday() {
 
 function renderStandings() {
   const winCounts = {};
-  PLAYERS.forEach(p => { winCounts[p.id] = { wins: 0, ties: 0, days: 0, total: 0 }; });
+  PLAYERS.forEach(p => { winCounts[p.id] = { wins: 0, days: 0, total: 0 }; });
 
   const byDate = {};
   allScores.forEach(row => {
@@ -746,15 +664,8 @@ function renderStandings() {
   });
 
   Object.values(byDate).forEach(rows => {
-    const result = dayResult(rows);
-    result.winners.forEach(w => {
-      if (!winCounts[w.player]) return;
-      if (result.tied) {
-        winCounts[w.player].ties++;
-      } else {
-        winCounts[w.player].wins++;
-      }
-    });
+    const w = dayWinner(rows);
+    if (w && winCounts[w.player]) winCounts[w.player].wins++;
     rows.forEach(r => {
       if (winCounts[r.player]) {
         winCounts[r.player].days++;
@@ -763,11 +674,7 @@ function renderStandings() {
     });
   });
 
-  const sorted = [...PLAYERS].sort((a, b) => {
-    const aDiff = winCounts[b.id].wins - winCounts[a.id].wins;
-    if (aDiff !== 0) return aDiff;
-    return winCounts[b.id].ties - winCounts[a.id].ties;
-  });
+  const sorted = [...PLAYERS].sort((a, b) => winCounts[b.id].wins - winCounts[a.id].wins);
 
   let html = '<div class="lb-section-title">All-time wins</div><div class="standings-card">';
   sorted.forEach((p, i) => {
@@ -780,9 +687,7 @@ function renderStandings() {
         <span class="standings-name">${p.label}</span>
         <span class="standings-sub">${s.days} days played · avg ${avg}</span>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
-        <span class="standings-wins">${s.wins}W ${s.ties}T</span>
-      </div>
+      <span class="standings-wins">${s.wins}W</span>
     </div>`;
   });
   html += '</div>';
@@ -819,14 +724,5 @@ function renderStandings() {
   document.getElementById("standings-content").innerHTML = html;
 }
 </script>
-
-<div id="auth-gate">
-  <h2>daily<span>gamez</span></h2>
-  <p>BOLO BOYZ ONLY</p>
-  <input id="auth-input" type="password" placeholder="password" onkeydown="if(event.key==='Enter')checkAuth()" />
-  <button id="auth-btn" onclick="checkAuth()">Let me in</button>
-  <div id="auth-error"></div>
-</div>
-
 </body>
 </html>
