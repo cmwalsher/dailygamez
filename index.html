@@ -442,6 +442,8 @@
 
 <script>
 
+const SUPABASE_URL = "https://prvrmmwicuionzuzmfnw.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBydnJtbXdpY3Vpb256dXptZm53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2ODkyMDEsImV4cCI6MjA4OTI2NTIwMX0.L2iGKoOOqwDt4158ca4g5pXbcBA_zyxeQRsJy1wQlNQ";
 const AUTH_KEY = "dg_auth";
 const AUTH_PASS = "boloboyz";
 
@@ -460,9 +462,6 @@ function checkAuth() {
 if (localStorage.getItem(AUTH_KEY) === btoa(AUTH_PASS)) {
   document.getElementById("auth-gate").style.display = "none";
 }
-
-const SUPABASE_URL = "https://prvrmmwicuionzuzmfnw.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBydnJtbXdpY3Vpb256dXptZm53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2ODkyMDEsImV4cCI6MjA4OTI2NTIwMX0.L2iGKoOOqwDt4158ca4g5pXbcBA_zyxeQRsJy1wQlNQ";
 
 const PLAYERS = [
   { id: "C", emoji: "🤖", label: "C" },
