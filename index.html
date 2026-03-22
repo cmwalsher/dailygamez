@@ -442,23 +442,13 @@
 
 <script>
 
-const AUTH_COOKIE = "dg_auth";
+const AUTH_KEY = "dg_auth";
 const AUTH_PASS = "boloboyz";
-
-function getCookie(name) {
-  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-  return match ? match[2] : null;
-}
-
-function setCookie(name, value, days) {
-  const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  document.cookie = name + "=" + value + "; expires=" + expires + "; path=/";
-}
 
 function checkAuth() {
   const val = document.getElementById("auth-input").value.trim().toLowerCase();
   if (val === AUTH_PASS) {
-    setCookie(AUTH_COOKIE, btoa(AUTH_PASS), 365);
+    localStorage.setItem(AUTH_KEY, btoa(AUTH_PASS));
     document.getElementById("auth-gate").style.display = "none";
   } else {
     document.getElementById("auth-error").textContent = "Wrong password. Try again.";
@@ -466,8 +456,8 @@ function checkAuth() {
   }
 }
 
-// On load — check cookie
-if (getCookie(AUTH_COOKIE) === btoa(AUTH_PASS)) {
+// On load — check localStorage
+if (localStorage.getItem(AUTH_KEY) === btoa(AUTH_PASS)) {
   document.getElementById("auth-gate").style.display = "none";
 }
 
