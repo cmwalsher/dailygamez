@@ -205,6 +205,24 @@
     .no-data { text-align: center; padding: 40px 0; color: #5a5f70; font-family: 'Space Mono', monospace; font-size: 0.8rem; }
     .game-breakdown-row { padding: "4px 0"; display: flex; align-items: center; gap: 8px; }
 
+
+    /* CONFETTI */
+    #confetti-canvas {
+      position: fixed; inset: 0;
+      pointer-events: none;
+      z-index: 8000;
+      width: 100%; height: 100%;
+    }
+    .cycle-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #f7d84b, #f4a200);
+      color: #0d0f14;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem; font-weight: 700;
+      padding: 3px 10px; border-radius: 20px;
+      margin-left: 6px; letter-spacing: 1px;
+    }
+
     /* PASSWORD GATE */
     #auth-gate {
       position: fixed; inset: 0;
@@ -639,8 +657,10 @@ async function saveScores() {
     });
     if (!res.ok) throw new Error(await res.text());
     statusEl.className = "status-msg success";
-    statusEl.textContent = "Scores saved! 🎉";
-    setTimeout(() => statusEl.classList.add("hidden"), 3000);
+    const cycleHit = isCycle(payload);
+    statusEl.textContent = cycleHit ? "🚲 YOU HIT THE CYCLE! 🎉" : "Scores saved! 🎉";
+    if (cycleHit) launchConfetti();
+    setTimeout(() => statusEl.classList.add("hidden"), cycleHit ? 5000 : 3000);
   } catch(e) {
     statusEl.className = "status-msg error";
     statusEl.textContent = "Save failed: " + e.message;
@@ -689,6 +709,51 @@ function formatScore(val) {
   return String(val);
 }
 
+
+function isCycle(row) {
+  const vals = [row.wordle, row.framed, row.heardle_90s, row.heardle_00s];
+  if (vals.some(v => v === null || v === undefined)) return false;
+  return [1,2,3,4].every(n => vals.includes(n)) && vals.every(v => [1,2,3,4].includes(v));
+}
+
+function launchConfetti() {
+  const canvas = document.getElementById("confetti-canvas");
+  canvas.style.display = "block";
+  const ctx = canvas.getContext("2d");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const pieces = Array.from({ length: 160 }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height - canvas.height,
+    w: Math.random() * 10 + 6,
+    h: Math.random() * 6 + 4,
+    color: ["#f7d84b","#39ff85","#e96c9a","#7b9cff","#e9a84c","#fff"][Math.floor(Math.random()*6)],
+    rot: Math.random() * 360,
+    vx: (Math.random() - 0.5) * 3,
+    vy: Math.random() * 4 + 2,
+    vr: (Math.random() - 0.5) * 6,
+  }));
+  let frame = 0;
+  const maxFrames = 220;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(p => {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot * Math.PI / 180);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, 1 - frame / maxFrames);
+      ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      ctx.restore();
+      p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+    });
+    frame++;
+    if (frame < maxFrames) requestAnimationFrame(draw);
+    else canvas.style.display = "none";
+  }
+  draw();
+}
+
 function getPSTDate() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
 }
@@ -718,26 +783,30 @@ function renderToday() {
   }
   html += '</div>';
 
+  let anyCycleToday = false;
   sorted.forEach(row => {
     const p = PLAYERS.find(x => x.id === row.player);
     if (!p) return;
     const isWinner = winnerIds.includes(row.player);
+    const hasCycle = isCycle(row);
+    if (hasCycle) anyCycleToday = true;
     html += `<div class="lb-player-row">
       <span class="lb-player-emoji">${p.emoji}</span>
       <div class="lb-scores">`;
     GAMES.forEach(g => {
       html += `<span class="lb-score-chip" style="color:${row[g.key] ? g.color : '#2a2f40'}">${g.abbr}${formatScore(row[g.key])}</span>`;
     });
-    html += `</div><span class="lb-total" style="color:${isWinner ? '#39ff85' : '#e8eaf0'}">${rowTotal(row) || "—"}</span></div>`;
+    html += `</div><span class="lb-total" style="color:${isWinner ? '#39ff85' : '#e8eaf0'}">${rowTotal(row) || "—"}${hasCycle ? '<span class="cycle-badge">🚲 CYCLE</span>' : ''}</span></div>`;
   });
 
   html += '</div>';
   container.innerHTML = html;
+  if (anyCycleToday) launchConfetti();
 }
 
 function renderStandings() {
   const winCounts = {};
-  PLAYERS.forEach(p => { winCounts[p.id] = { wins: 0, ties: 0, days: 0, total: 0 }; });
+  PLAYERS.forEach(p => { winCounts[p.id] = { wins: 0, ties: 0, cycles: 0, days: 0, total: 0 }; });
 
   const byDate = {};
   allScores.forEach(row => {
@@ -759,6 +828,7 @@ function renderStandings() {
       if (winCounts[r.player]) {
         winCounts[r.player].days++;
         winCounts[r.player].total += rowTotal(r);
+        if (isCycle(r)) winCounts[r.player].cycles++;
       }
     });
   });
@@ -816,10 +886,33 @@ function renderStandings() {
   });
   html += '</div>';
 
+  // Hall of fame — only appears if at least one cycle has been hit
+  const allCycles = allScores.filter(r => isCycle(r))
+    .sort((a, b) => b.score_date.localeCompare(a.score_date));
+
+  if (allCycles.length > 0) {
+    html += '<div class="lb-section-title" style="margin-top:20px">🚲 hall of fame</div><div class="standings-card">';
+    allCycles.forEach(r => {
+      const p = PLAYERS.find(x => x.id === r.player);
+      if (!p) return;
+      const dateStr = new Date(r.score_date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+      const vals = GAMES.map(g => `${g.abbr}${formatScore(r[g.key])}`).join(" ");
+      html += `<div class="standings-row">
+        <span class="standings-emoji">${p.emoji}</span>
+        <div class="standings-stats">
+          <span class="standings-name">${p.label} <span class="cycle-badge">🚲 CYCLE</span></span>
+          <span class="standings-sub">${dateStr} · ${vals}</span>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
   document.getElementById("standings-content").innerHTML = html;
 }
 </script>
 
+<canvas id="confetti-canvas" style="display:none"></canvas>
 <div id="auth-gate">
   <h2>daily<span>gamez</span></h2>
   <p>BOLO BOYZ ONLY</p>
