@@ -596,14 +596,15 @@ function rowTotal(row) {
   }, 0);
 }
 
-function dayWinner(rows) {
-  // A row counts as complete if all 4 games have a value (including 0=unavailable)
+function dayResult(rows) {
   const complete = rows.filter(r =>
     r.wordle !== null && r.framed !== null &&
     r.heardle_90s !== null && r.heardle_00s !== null
   );
-  if (!complete.length) return null;
-  return complete.reduce((best, r) => rowTotal(r) < rowTotal(best) ? r : best);
+  if (!complete.length) return { winners: [], tied: false };
+  const best = Math.min(...complete.map(r => rowTotal(r)));
+  const winners = complete.filter(r => rowTotal(r) === best);
+  return { winners, tied: winners.length > 1 };
 }
 
 function formatScore(val) {
@@ -627,19 +628,25 @@ function renderToday() {
     return;
   }
 
-  const winner = dayWinner(todayRows);
-  const winnerPlayer = winner ? PLAYERS.find(p => p.id === winner.player) : null;
+  const result = dayResult(todayRows);
+  const winnerIds = result.winners.map(r => r.player);
   const sorted = [...todayRows].sort((a, b) => rowTotal(a) - rowTotal(b));
 
   let html = '<div class="lb-day-card"><div class="lb-day-header">';
   html += `<span class="lb-day-date">${new Date(today + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</span>`;
-  if (winnerPlayer) html += `<span class="lb-winner-badge">🏆 ${winnerPlayer.emoji} ${winnerPlayer.label}</span>`;
+  if (result.tied) {
+    const tiedEmojis = result.winners.map(r => PLAYERS.find(p => p.id === r.player)?.emoji).join("");
+    html += `<span class="lb-winner-badge">👔 ${tiedEmojis} TIE</span>`;
+  } else if (result.winners.length === 1) {
+    const wp = PLAYERS.find(p => p.id === result.winners[0].player);
+    if (wp) html += `<span class="lb-winner-badge">🏆 ${wp.emoji} ${wp.label}</span>`;
+  }
   html += '</div>';
 
   sorted.forEach(row => {
     const p = PLAYERS.find(x => x.id === row.player);
     if (!p) return;
-    const isWinner = winner && winner.player === row.player;
+    const isWinner = winnerIds.includes(row.player);
     html += `<div class="lb-player-row">
       <span class="lb-player-emoji">${p.emoji}</span>
       <div class="lb-scores">`;
@@ -655,7 +662,7 @@ function renderToday() {
 
 function renderStandings() {
   const winCounts = {};
-  PLAYERS.forEach(p => { winCounts[p.id] = { wins: 0, days: 0, total: 0 }; });
+  PLAYERS.forEach(p => { winCounts[p.id] = { wins: 0, ties: 0, days: 0, total: 0 }; });
 
   const byDate = {};
   allScores.forEach(row => {
@@ -664,8 +671,12 @@ function renderStandings() {
   });
 
   Object.values(byDate).forEach(rows => {
-    const w = dayWinner(rows);
-    if (w && winCounts[w.player]) winCounts[w.player].wins++;
+    const result = dayResult(rows);
+    result.winners.forEach(w => {
+      if (!winCounts[w.player]) return;
+      if (result.tied) winCounts[w.player].ties++;
+      else winCounts[w.player].wins++;
+    });
     rows.forEach(r => {
       if (winCounts[r.player]) {
         winCounts[r.player].days++;
@@ -674,7 +685,10 @@ function renderStandings() {
     });
   });
 
-  const sorted = [...PLAYERS].sort((a, b) => winCounts[b.id].wins - winCounts[a.id].wins);
+  const sorted = [...PLAYERS].sort((a, b) => {
+    const diff = winCounts[b.id].wins - winCounts[a.id].wins;
+    return diff !== 0 ? diff : winCounts[b.id].ties - winCounts[a.id].ties;
+  });
 
   let html = '<div class="lb-section-title">All-time wins</div><div class="standings-card">';
   sorted.forEach((p, i) => {
@@ -687,7 +701,7 @@ function renderStandings() {
         <span class="standings-name">${p.label}</span>
         <span class="standings-sub">${s.days} days played · avg ${avg}</span>
       </div>
-      <span class="standings-wins">${s.wins}W</span>
+      <span class="standings-wins">${s.wins}W ${s.ties}T</span>
     </div>`;
   });
   html += '</div>';
