@@ -414,10 +414,61 @@ let currentPlayer = null;
 let scores = { wordle: null, framed: null, heardle_90s: null, heardle_00s: null };
 let allScores = [];
 
+
+const DRAFT_KEY = "dg_draft";
+
+function saveDraft() {
+  try {
+    const today = getPSTDate();
+    const draft = { date: today, player: currentPlayer ? currentPlayer.id : null, scores };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  } catch(e) {}
+}
+
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
+}
+
+function restoreDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return;
+    const draft = JSON.parse(raw);
+    // Clear if draft is from a previous PST day
+    if (draft.date !== getPSTDate()) { clearDraft(); return; }
+    // Restore scores
+    if (draft.scores) {
+      scores = draft.scores;
+      GAMES.forEach(g => {
+        const val = scores[g.key];
+        if (val !== null && val !== undefined) {
+          document.getElementById("sel-" + g.key).value = String(val);
+          updateBadge(g.key);
+        }
+      });
+      updatePreview();
+    }
+    // Restore player
+    if (draft.player) {
+      const p = PLAYERS.find(x => x.id === draft.player);
+      if (p) {
+        currentPlayer = p;
+        document.querySelectorAll(".player-btn").forEach(b => {
+          if (b.querySelector(".p-label").textContent === p.label) b.classList.add("selected");
+        });
+        updateSubmitButton();
+      }
+    }
+  } catch(e) {}
+}
+
 // Date header
 document.getElementById("today-date").textContent = new Date().toLocaleDateString("en-US", {
   weekday: "short", month: "short", day: "numeric"
 });
+
+// Restore any saved draft
+restoreDraft();
 
 function showTab(tab) {
   document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
@@ -432,12 +483,14 @@ function selectPlayer(id, emoji) {
   document.querySelectorAll(".player-btn").forEach(b => b.classList.remove("selected"));
   event.currentTarget.classList.add("selected");
   updateSubmitButton();
+  saveDraft();
 }
 
 function manualScore(key, val) {
   scores[key] = val === "" ? null : parseInt(val);
   updateBadge(key);
   updatePreview();
+  saveDraft();
 }
 
 function updateBadge(key) {
@@ -498,6 +551,7 @@ async function pasteScore(gameKey, parseType) {
       document.getElementById("sel-" + gameKey).value = String(val);
       updateBadge(gameKey);
       updatePreview();
+      saveDraft();
     } else {
       hint.className = "parse-error";
       hint.textContent = "Couldn't parse — set manually below";
