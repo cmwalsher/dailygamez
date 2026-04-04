@@ -595,9 +595,14 @@ async function saveScores() {
     if (!res.ok) throw new Error(await res.text());
     statusEl.className = "status-msg success";
     const cycleHit = isCycle(payload);
-    statusEl.textContent = cycleHit ? "🚲 YOU HIT THE CYCLE! 🎉" : "Scores saved! 🎉";
-    if (cycleHit) launchConfetti();
-    setTimeout(() => statusEl.classList.add("hidden"), cycleHit ? 5000 : 3000);
+    const eagleHit = !cycleHit && payload.wordle !== null && payload.framed !== null &&
+      payload.heardle_90s !== null && payload.heardle_00s !== null &&
+      rowTotal(payload) < 10 && rowTotal(payload) > 0;
+    if (cycleHit) statusEl.textContent = "🚲 YOU HIT THE CYCLE! 🎉";
+    else if (eagleHit) statusEl.textContent = "🦅 EAGLE! Under 10! 🎉";
+    else statusEl.textContent = "Scores saved! 🎉";
+    if (cycleHit || eagleHit) launchConfetti();
+    setTimeout(() => statusEl.classList.add("hidden"), (cycleHit || eagleHit) ? 5000 : 3000);
   } catch(e) {
     statusEl.className = "status-msg error";
     statusEl.textContent = "Save failed: " + e.message;
@@ -753,6 +758,7 @@ function renderToday() {
   html += '</div>';
 
   let anyCycleToday = false;
+  let anyEagleToday = false;
   sorted.forEach(row => {
     const p = PLAYERS.find(x => x.id === row.player);
     if (!p) return;
@@ -765,12 +771,20 @@ function renderToday() {
     GAMES.forEach(g => {
       html += `<span class="lb-score-chip" style="color:${row[g.key] ? g.color : '#2a2f40'}">${g.abbr}${formatScore(row[g.key])}</span>`;
     });
-    html += `</div><span class="lb-total" style="color:${isWinner ? '#39ff85' : '#e8eaf0'}">${rowTotal(row) || "—"}${hasCycle ? '<span class="cycle-badge">🚲 CYCLE</span>' : ''}</span></div>`;
+    const hasEagle = !hasCycle && rowTotal(row) < 10 && rowTotal(row) > 0 &&
+      row.wordle !== null && row.framed !== null && row.heardle_90s !== null && row.heardle_00s !== null;
+    if (hasEagle) anyEagleToday = true;
+    const extraBadge = hasCycle
+      ? '<span class="cycle-badge">🚲 CYCLE</span>'
+      : hasEagle
+        ? '<span class="cycle-badge" style="background:linear-gradient(135deg,#4fc3f7,#0288d1)">🦅 EAGLE</span>'
+        : '';
+    html += `</div><span class="lb-total" style="color:${isWinner ? '#39ff85' : '#e8eaf0'}">${rowTotal(row) || "—"}${extraBadge}</span></div>`;
   });
 
   html += '</div>';
   container.innerHTML = html;
-  if (anyCycleToday) launchConfetti();
+  if (anyCycleToday || anyEagleToday) launchConfetti();
 }
 
 function renderStandings() {
