@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -206,48 +205,54 @@
     .no-data { text-align: center; padding: 40px 0; color: #5a5f70; font-family: 'Space Mono', monospace; font-size: 0.8rem; }
     .game-breakdown-row { padding: "4px 0"; display: flex; align-items: center; gap: 8px; }
 
-```
-#confetti-canvas {
-  position: fixed; inset: 0; pointer-events: none;
-  z-index: 8000; width: 100%; height: 100%;
-}
-.cycle-badge {
-  display: inline-block;
-  background: linear-gradient(135deg, #f7d84b, #f4a200);
-  color: #0d0f14; font-family: 'Space Mono', monospace;
-  font-size: 0.72rem; font-weight: 700;
-  padding: 2px 8px; border-radius: 20px;
-  margin-left: 6px; letter-spacing: 1px;
-}
+    #confetti-canvas {
+      position: fixed; inset: 0; pointer-events: none;
+      z-index: 8000; width: 100%; height: 100%;
+    }
+    .cycle-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #f7d84b, #f4a200);
+      color: #0d0f14; font-family: 'Space Mono', monospace;
+      font-size: 0.72rem; font-weight: 700;
+      padding: 2px 8px; border-radius: 20px;
+      margin-left: 6px; letter-spacing: 1px;
+    }
 
-/* EDGED */
-#knife-canvas {
-  position: fixed; inset: 0; pointer-events: none;
-  z-index: 9000; width: 100%; height: 100%;
-}
-#edged-text {
-  position: fixed; inset: 0; pointer-events: none;
-  z-index: 9001; display: flex; align-items: center; justify-content: center;
-  opacity: 0; transition: opacity 0.3s;
-}
-#edged-text span {
-  font-family: 'Syne', sans-serif; font-weight: 800;
-  font-size: 5rem; color: #ff1a1a;
-  text-shadow: 0 0 40px #ff0000, 0 0 80px #990000;
-  letter-spacing: -2px;
-  transform: scaleY(1.3);
-  display: inline-block;
-}
-.knife-badge {
-  display: inline-block;
-  background: linear-gradient(135deg, #c0392b, #7b0000);
-  color: #fff; font-family: 'Space Mono', monospace;
-  font-size: 0.72rem; font-weight: 700;
-  padding: 2px 8px; border-radius: 20px;
-  margin-left: 6px; letter-spacing: 1px;
-}
-```
+    /* EDGED */
+    #knife-canvas {
+      position: fixed; inset: 0; pointer-events: none;
+      z-index: 9000; width: 100%; height: 100%;
+    }
+    #edged-text {
+      position: fixed; inset: 0; pointer-events: none;
+      z-index: 9001; display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity 0.3s;
+    }
+    #edged-text span {
+      font-family: 'Syne', sans-serif; font-weight: 800;
+      font-size: 5rem; color: #ff1a1a;
+      text-shadow: 0 0 40px #ff0000, 0 0 80px #990000;
+      letter-spacing: -2px;
+      transform: scaleY(1.3);
+      display: inline-block;
+    }
+    .knife-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #c0392b, #7b0000);
+      color: #fff; font-family: 'Space Mono', monospace;
+      font-size: 0.72rem; font-weight: 700;
+      padding: 2px 8px; border-radius: 20px;
+      margin-left: 6px; letter-spacing: 1px;
+    }
 
+    .soak-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #4dd0e1, #0097a7);
+      color: #0d0f14; font-family: 'Space Mono', monospace;
+      font-size: 0.72rem; font-weight: 700;
+      padding: 2px 8px; border-radius: 20px;
+      margin-left: 6px; letter-spacing: 1px;
+    }
   </style>
 </head>
 <body>
@@ -263,7 +268,6 @@
   </div>
 
   <!-- ENTER SCORES -->
-
   <div class="section active" id="section-enter">
     <div class="player-select">
       <label>Who are you?</label>
@@ -280,140 +284,136 @@
       </div>
     </div>
 
-```
-<div class="game-cards">
-  <!-- Wordle -->
-  <div class="game-card" id="card-wordle">
-    <div class="game-card-header">
-      <div class="game-title">
-        <div class="game-dot" style="background:#6aaa64"></div>
-        <span class="game-name">Wordle</span>
+    <div class="game-cards">
+      <!-- Wordle -->
+      <div class="game-card" id="card-wordle">
+        <div class="game-card-header">
+          <div class="game-title">
+            <div class="game-dot" style="background:#6aaa64"></div>
+            <span class="game-name">Wordle</span>
+          </div>
+          <span class="game-score-badge" id="badge-wordle" style="color:#2a2f40">W</span>
+        </div>
+        <div class="game-card-body">
+          <div class="btn-row">
+            <button class="btn-play" style="background:#6aaa64" onclick="window.open('https://www.nytimes.com/games/wordle/index.html','_blank')">▶ Play Wordle</button>
+            <button class="btn-paste" onclick="pasteScore('wordle','wordle')">📋 Paste</button>
+          </div>
+          <div id="hint-wordle" class="parse-hint hidden"></div>
+          <div class="manual-row">
+            <label>Manual:</label>
+            <select class="score-select" id="sel-wordle" onchange="manualScore('wordle',this.value)">
+              <option value="">—</option>
+              <option value="1">1</option><option value="2">2</option>
+              <option value="3">3</option><option value="4">4</option>
+              <option value="5">5</option><option value="6">6</option>
+              <option value="10">10 (missed all)</option>
+              <option value="0">X (unavailable)</option>
+            </select>
+          </div>
+        </div>
       </div>
-      <span class="game-score-badge" id="badge-wordle" style="color:#2a2f40">W</span>
-    </div>
-    <div class="game-card-body">
-      <div class="btn-row">
-        <button class="btn-play" style="background:#6aaa64" onclick="window.open('https://www.nytimes.com/games/wordle/index.html','_blank')">▶ Play Wordle</button>
-        <button class="btn-paste" onclick="pasteScore('wordle','wordle')">📋 Paste</button>
-      </div>
-      <div id="hint-wordle" class="parse-hint hidden"></div>
-      <div class="manual-row">
-        <label>Manual:</label>
-        <select class="score-select" id="sel-wordle" onchange="manualScore('wordle',this.value)">
-          <option value="">—</option>
-          <option value="1">1</option><option value="2">2</option>
-          <option value="3">3</option><option value="4">4</option>
-          <option value="5">5</option><option value="6">6</option>
-          <option value="10">10 (missed all)</option>
-          <option value="0">X (unavailable)</option>
-        </select>
-      </div>
-    </div>
-  </div>
 
-  <!-- Framed -->
-  <div class="game-card" id="card-framed">
-    <div class="game-card-header">
-      <div class="game-title">
-        <div class="game-dot" style="background:#e9a84c"></div>
-        <span class="game-name">Framed</span>
+      <!-- Framed -->
+      <div class="game-card" id="card-framed">
+        <div class="game-card-header">
+          <div class="game-title">
+            <div class="game-dot" style="background:#e9a84c"></div>
+            <span class="game-name">Framed</span>
+          </div>
+          <span class="game-score-badge" id="badge-framed" style="color:#2a2f40">F</span>
+        </div>
+        <div class="game-card-body">
+          <div class="btn-row">
+            <button class="btn-play" style="background:#e9a84c" onclick="window.open('https://framed.wtf','_blank')">▶ Play Framed</button>
+            <button class="btn-paste" onclick="pasteScore('framed','framed')">📋 Paste</button>
+          </div>
+          <div id="hint-framed" class="parse-hint hidden"></div>
+          <div class="manual-row">
+            <label>Manual:</label>
+            <select class="score-select" id="sel-framed" onchange="manualScore('framed',this.value)">
+              <option value="">—</option>
+              <option value="1">1</option><option value="2">2</option>
+              <option value="3">3</option><option value="4">4</option>
+              <option value="5">5</option><option value="6">6</option>
+              <option value="10">10 (missed all)</option>
+              <option value="0">X (unavailable)</option>
+            </select>
+          </div>
+        </div>
       </div>
-      <span class="game-score-badge" id="badge-framed" style="color:#2a2f40">F</span>
-    </div>
-    <div class="game-card-body">
-      <div class="btn-row">
-        <button class="btn-play" style="background:#e9a84c" onclick="window.open('https://framed.wtf','_blank')">▶ Play Framed</button>
-        <button class="btn-paste" onclick="pasteScore('framed','framed')">📋 Paste</button>
-      </div>
-      <div id="hint-framed" class="parse-hint hidden"></div>
-      <div class="manual-row">
-        <label>Manual:</label>
-        <select class="score-select" id="sel-framed" onchange="manualScore('framed',this.value)">
-          <option value="">—</option>
-          <option value="1">1</option><option value="2">2</option>
-          <option value="3">3</option><option value="4">4</option>
-          <option value="5">5</option><option value="6">6</option>
-          <option value="10">10 (missed all)</option>
-          <option value="0">X (unavailable)</option>
-        </select>
-      </div>
-    </div>
-  </div>
 
-  <!-- 90s Heardle -->
-  <div class="game-card" id="card-heardle_90s">
-    <div class="game-card-header">
-      <div class="game-title">
-        <div class="game-dot" style="background:#e96c9a"></div>
-        <span class="game-name">90s Heardle</span>
+      <!-- 90s Heardle -->
+      <div class="game-card" id="card-heardle_90s">
+        <div class="game-card-header">
+          <div class="game-title">
+            <div class="game-dot" style="background:#e96c9a"></div>
+            <span class="game-name">90s Heardle</span>
+          </div>
+          <span class="game-score-badge" id="badge-heardle_90s" style="color:#2a2f40">9H</span>
+        </div>
+        <div class="game-card-body">
+          <div class="btn-row">
+            <button class="btn-play" style="background:#e96c9a" onclick="window.open('https://www.90s.heardledecades.com/','_blank')">▶ Play 90s Heardle</button>
+            <button class="btn-paste" onclick="pasteScore('heardle_90s','heardle')">📋 Paste</button>
+          </div>
+          <div id="hint-heardle_90s" class="parse-hint hidden"></div>
+          <div class="manual-row">
+            <label>Manual:</label>
+            <select class="score-select" id="sel-heardle_90s" onchange="manualScore('heardle_90s',this.value)">
+              <option value="">—</option>
+              <option value="1">1</option><option value="2">2</option>
+              <option value="3">3</option><option value="4">4</option>
+              <option value="5">5</option><option value="6">6</option>
+              <option value="10">10 (missed all)</option>
+              <option value="0">X (unavailable)</option>
+            </select>
+          </div>
+        </div>
       </div>
-      <span class="game-score-badge" id="badge-heardle_90s" style="color:#2a2f40">9H</span>
-    </div>
-    <div class="game-card-body">
-      <div class="btn-row">
-        <button class="btn-play" style="background:#e96c9a" onclick="window.open('https://www.90s.heardledecades.com/','_blank')">▶ Play 90s Heardle</button>
-        <button class="btn-paste" onclick="pasteScore('heardle_90s','heardle')">📋 Paste</button>
-      </div>
-      <div id="hint-heardle_90s" class="parse-hint hidden"></div>
-      <div class="manual-row">
-        <label>Manual:</label>
-        <select class="score-select" id="sel-heardle_90s" onchange="manualScore('heardle_90s',this.value)">
-          <option value="">—</option>
-          <option value="1">1</option><option value="2">2</option>
-          <option value="3">3</option><option value="4">4</option>
-          <option value="5">5</option><option value="6">6</option>
-          <option value="10">10 (missed all)</option>
-          <option value="0">X (unavailable)</option>
-        </select>
-      </div>
-    </div>
-  </div>
 
-  <!-- 00s Heardle -->
-  <div class="game-card" id="card-heardle_00s">
-    <div class="game-card-header">
-      <div class="game-title">
-        <div class="game-dot" style="background:#7b9cff"></div>
-        <span class="game-name">00s Heardle</span>
+      <!-- 00s Heardle -->
+      <div class="game-card" id="card-heardle_00s">
+        <div class="game-card-header">
+          <div class="game-title">
+            <div class="game-dot" style="background:#7b9cff"></div>
+            <span class="game-name">00s Heardle</span>
+          </div>
+          <span class="game-score-badge" id="badge-heardle_00s" style="color:#2a2f40">0H</span>
+        </div>
+        <div class="game-card-body">
+          <div class="btn-row">
+            <button class="btn-play" style="background:#7b9cff" onclick="window.open('https://00s.heardledecades.com/','_blank')">▶ Play 00s Heardle</button>
+            <button class="btn-paste" onclick="pasteScore('heardle_00s','heardle')">📋 Paste</button>
+          </div>
+          <div id="hint-heardle_00s" class="parse-hint hidden"></div>
+          <div class="manual-row">
+            <label>Manual:</label>
+            <select class="score-select" id="sel-heardle_00s" onchange="manualScore('heardle_00s',this.value)">
+              <option value="">—</option>
+              <option value="1">1</option><option value="2">2</option>
+              <option value="3">3</option><option value="4">4</option>
+              <option value="5">5</option><option value="6">6</option>
+              <option value="10">10 (missed all)</option>
+              <option value="0">X (unavailable)</option>
+            </select>
+          </div>
+        </div>
       </div>
-      <span class="game-score-badge" id="badge-heardle_00s" style="color:#2a2f40">0H</span>
     </div>
-    <div class="game-card-body">
-      <div class="btn-row">
-        <button class="btn-play" style="background:#7b9cff" onclick="window.open('https://00s.heardledecades.com/','_blank')">▶ Play 00s Heardle</button>
-        <button class="btn-paste" onclick="pasteScore('heardle_00s','heardle')">📋 Paste</button>
+
+    <div class="submit-section hidden" id="submit-section">
+      <div class="score-preview">
+        <div class="preview-label">Your score string</div>
+        <div class="preview-string" id="preview-string">—</div>
       </div>
-      <div id="hint-heardle_00s" class="parse-hint hidden"></div>
-      <div class="manual-row">
-        <label>Manual:</label>
-        <select class="score-select" id="sel-heardle_00s" onchange="manualScore('heardle_00s',this.value)">
-          <option value="">—</option>
-          <option value="1">1</option><option value="2">2</option>
-          <option value="3">3</option><option value="4">4</option>
-          <option value="5">5</option><option value="6">6</option>
-          <option value="10">10 (missed all)</option>
-          <option value="0">X (unavailable)</option>
-        </select>
-      </div>
+      <button class="btn-copy" onclick="copyScores()">📋 Copy to clipboard (for text thread)</button>
+      <button class="btn-submit" id="btn-submit" onclick="saveScores()" disabled>Select your player first</button>
+      <div id="status-msg" class="status-msg hidden"></div>
     </div>
-  </div>
-</div>
-
-<div class="submit-section hidden" id="submit-section">
-  <div class="score-preview">
-    <div class="preview-label">Your score string</div>
-    <div class="preview-string" id="preview-string">—</div>
-  </div>
-  <button class="btn-copy" onclick="copyScores()">📋 Copy to clipboard (for text thread)</button>
-  <button class="btn-submit" id="btn-submit" onclick="saveScores()" disabled>Select your player first</button>
-  <div id="status-msg" class="status-msg hidden"></div>
-</div>
-```
-
   </div>
 
   <!-- TODAY TAB -->
-
   <div class="section" id="section-today">
     <div class="leaderboard" id="today-leaderboard">
       <div class="no-data">Loading...</div>
@@ -421,7 +421,6 @@
   </div>
 
   <!-- STANDINGS TAB -->
-
   <div class="section" id="section-standings">
     <div id="standings-content">
       <div class="no-data">Loading...</div>
@@ -912,6 +911,46 @@ function launchKnives() {
   draw();
 }
 
+
+function numEmoji(n) {
+  const map = {"0":"0️⃣","1":"1️⃣","2":"2️⃣","3":"3️⃣","4":"4️⃣","5":"5️⃣","6":"6️⃣","7":"7️⃣","8":"8️⃣","9":"9️⃣"};
+  return String(n).split("").map(d => map[d] || d).join("");
+}
+
+function calcStreaks(allScoresData) {
+  // Returns { playerId: { current: N, longest: N, soakStartDates: [date,...] } }
+  // A soak starts on day 3 of a streak
+  const byDate = {};
+  allScoresData.forEach(row => {
+    if (!byDate[row.score_date]) byDate[row.score_date] = [];
+    byDate[row.score_date].push(row);
+  });
+
+  const dates = Object.keys(byDate).sort();
+  const streaks = {};
+  PLAYERS.forEach(p => { streaks[p.id] = { current: 0, longest: 0, soakStartDates: [] }; });
+
+  dates.forEach(date => {
+    const rows = byDate[date];
+    const result = dayResult(rows);
+    // A player "scores" the day if they won or tied (and submitted)
+    PLAYERS.forEach(p => {
+      const submitted = rows.find(r => r.player === p.id &&
+        r.wordle !== null && r.framed !== null && r.heardle_90s !== null && r.heardle_00s !== null);
+      const wonOrTied = submitted && result.winners.some(w => w.player === p.id);
+      if (wonOrTied) {
+        streaks[p.id].current++;
+        if (streaks[p.id].current > streaks[p.id].longest) streaks[p.id].longest = streaks[p.id].current;
+        // Record HOF entry on exactly day 3
+        if (streaks[p.id].current === 3) streaks[p.id].soakStartDates.push(date);
+      } else {
+        streaks[p.id].current = 0;
+      }
+    });
+  });
+
+  return streaks;
+}
 function getPSTDate() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
 }
@@ -929,6 +968,7 @@ function renderToday() {
   const result = dayResult(todayRows);
   const winnerIds = result.winners.map(r => r.player);
   const sorted = [...todayRows].sort((a, b) => rowTotal(a) - rowTotal(b));
+  const streaks = calcStreaks(allScores);
 
   let html = '<div class="lb-day-card"><div class="lb-day-header">';
   html += `<span class="lb-day-date">${new Date(today + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</span>`;
@@ -959,13 +999,17 @@ function renderToday() {
     const hasEagle = !hasCycle && rowTotal(row) < 10 && rowTotal(row) > 0 &&
       row.wordle !== null && row.framed !== null && row.heardle_90s !== null && row.heardle_00s !== null;
     if (hasEagle) anyEagleToday = true;
+    const playerStreak = streaks[row.player] ? streaks[row.player].current : 0;
+    const hasSoak = playerStreak >= 3;
     const extraBadge = hasCycle
       ? '<span class="cycle-badge">🚲 CYCLE</span>'
       : hasEagle
         ? '<span class="cycle-badge" style="background:linear-gradient(135deg,#4fc3f7,#0288d1)">🦅 EAGLE</span>'
         : (isWinner && edgeToday)
           ? '<span class="knife-badge">🔪 EDGED</span>'
-          : '';
+          : hasSoak
+            ? `<span class="soak-badge">🛁${numEmoji(playerStreak)}</span>`
+            : '';
     html += `</div><span class="lb-total" style="color:${isWinner ? '#39ff85' : '#e8eaf0'}">${rowTotal(row) || "—"}${extraBadge}</span></div>`;
   });
 
@@ -978,6 +1022,7 @@ function renderToday() {
 function renderStandings() {
   const winCounts = {};
   PLAYERS.forEach(p => { winCounts[p.id] = { wins: 0, ties: 0, cycles: 0, edges: 0, days: 0, total: 0 }; });
+  const streakData = calcStreaks(allScores);
 
   const byDate = {};
   allScores.forEach(row => {
@@ -1089,6 +1134,54 @@ function renderStandings() {
     hofEntries.push({ date: biggestMargin.date, label: `${biggestMargin.winner.emoji} ${biggestMargin.winner.label}`, badge: "💥 BLOWOUT", badgeStyle: "background:linear-gradient(135deg,#ff6b6b,#c0392b)", sub: `+${biggestMargin.margin} over ${biggestMargin.second.emoji} ${biggestMargin.second.label} · ${biggestMargin.winTotal} vs ${biggestMargin.loseTotal}` });
   }
 
+  // Soaks — one HOF entry per streak that hit day 3, with final length
+  // Re-derive streak lengths per soak start date
+  const soakLengths = {};
+  (() => {
+    const byDate2 = {};
+    allScores.forEach(r => {
+      if (!byDate2[r.score_date]) byDate2[r.score_date] = [];
+      byDate2[r.score_date].push(r);
+    });
+    const dates2 = Object.keys(byDate2).sort();
+    const running = {};
+    PLAYERS.forEach(p => { running[p.id] = { streak: 0, soakDay3Date: null }; });
+    dates2.forEach(date => {
+      const rows = byDate2[date];
+      const res = dayResult(rows);
+      PLAYERS.forEach(p => {
+        const submitted = rows.find(r => r.player === p.id &&
+          r.wordle !== null && r.framed !== null && r.heardle_90s !== null && r.heardle_00s !== null);
+        const wonOrTied = submitted && res.winners.some(w => w.player === p.id);
+        if (wonOrTied) {
+          running[p.id].streak++;
+          if (running[p.id].streak === 3) running[p.id].soakDay3Date = date;
+          if (running[p.id].soakDay3Date) {
+            soakLengths[p.id + "_" + running[p.id].soakDay3Date] = running[p.id].streak;
+          }
+        } else {
+          running[p.id].streak = 0;
+          running[p.id].soakDay3Date = null;
+        }
+      });
+    });
+  })();
+
+  PLAYERS.forEach(p => {
+    const sd = streakData[p.id];
+    if (!sd) return;
+    sd.soakStartDates.forEach(date => {
+      const finalLen = soakLengths[p.id + "_" + date] || 3;
+      hofEntries.push({
+        date,
+        label: `${p.emoji} ${p.label}`,
+        badge: `🛁 SOAK`,
+        badgeStyle: "background:linear-gradient(135deg,#4dd0e1,#0097a7)",
+        sub: `${numEmoji(finalLen)} day soak`
+      });
+    });
+  });
+
   hofEntries.sort((a, b) => b.date.localeCompare(a.date));
 
   if (hofEntries.length > 0) {
@@ -1108,10 +1201,8 @@ function renderStandings() {
   document.getElementById("standings-content").innerHTML = html;
 }
 </script>
-
 <canvas id="confetti-canvas" style="display:none"></canvas>
 <canvas id="knife-canvas" style="display:none"></canvas>
-
 <div id="edged-text" style="display:none"><span>EDGED</span></div>
 </body>
 </html>
