@@ -219,6 +219,33 @@
   padding: 2px 8px; border-radius: 20px;
   margin-left: 6px; letter-spacing: 1px;
 }
+
+/* EDGED */
+#knife-canvas {
+  position: fixed; inset: 0; pointer-events: none;
+  z-index: 9000; width: 100%; height: 100%;
+}
+#edged-text {
+  position: fixed; inset: 0; pointer-events: none;
+  z-index: 9001; display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.3s;
+}
+#edged-text span {
+  font-family: 'Syne', sans-serif; font-weight: 800;
+  font-size: 5rem; color: #ff1a1a;
+  text-shadow: 0 0 40px #ff0000, 0 0 80px #990000;
+  letter-spacing: -2px;
+  transform: scaleY(1.3);
+  display: inline-block;
+}
+.knife-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #c0392b, #7b0000);
+  color: #fff; font-family: 'Space Mono', monospace;
+  font-size: 0.72rem; font-weight: 700;
+  padding: 2px 8px; border-radius: 20px;
+  margin-left: 6px; letter-spacing: 1px;
+}
 ```
 
   </style>
@@ -728,6 +755,163 @@ function restoreDraft() {
   } catch(e) {}
 }
 
+
+function isEdge(rows) {
+  // Winner beats 2nd place by exactly 1, needs 2+ complete rows
+  const complete = rows.filter(r =>
+    r.wordle !== null && r.framed !== null &&
+    r.heardle_90s !== null && r.heardle_00s !== null
+  );
+  if (complete.length < 2) return false;
+  const ranked = [...complete].sort((a, b) => rowTotal(a) - rowTotal(b));
+  return (rowTotal(ranked[1]) - rowTotal(ranked[0])) === 1;
+}
+
+function launchKnives() {
+  const canvas = document.getElementById("knife-canvas");
+  const edgedEl = document.getElementById("edged-text");
+  canvas.style.display = "block";
+  edgedEl.style.display = "flex";
+  const ctx = canvas.getContext("2d");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  // Blood drip state — pools at bottom and rises
+  let bloodLevel = canvas.height + 40;
+  const bloodTarget = canvas.height * 0.55;
+
+  // Knives — fall from top spinning
+  const knives = Array.from({ length: 18 }, () => ({
+    x: Math.random() * canvas.width,
+    y: -60 - Math.random() * 300,
+    vy: 4 + Math.random() * 5,
+    rot: Math.random() * Math.PI * 2,
+    vr: (Math.random() - 0.5) * 0.35,
+    landed: false,
+    landY: canvas.height * 0.52 + Math.random() * (canvas.height * 0.4),
+    splashFrame: 0,
+  }));
+
+  let frame = 0;
+  const maxFrames = 280;
+
+  function drawKnife(ctx, x, y, rot) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rot);
+    // Blade
+    ctx.beginPath();
+    ctx.moveTo(0, -22);
+    ctx.lineTo(3, 0);
+    ctx.lineTo(0, 6);
+    ctx.lineTo(-3, 0);
+    ctx.closePath();
+    ctx.fillStyle = "#c8c8c8";
+    ctx.fill();
+    // Edge glint
+    ctx.beginPath();
+    ctx.moveTo(0, -22);
+    ctx.lineTo(1.5, -8);
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+    // Handle
+    ctx.beginPath();
+    ctx.roundRect(-3, 6, 6, 14, 1);
+    ctx.fillStyle = "#2a1a00";
+    ctx.fill();
+    // Handle wrap
+    ctx.beginPath();
+    ctx.rect(-3, 9, 6, 2);
+    ctx.rect(-3, 14, 6, 2);
+    ctx.fillStyle = "#8b4513";
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawBloodPool(ctx, level, alpha) {
+    // Rising blood from bottom
+    ctx.save();
+    ctx.globalAlpha = Math.min(alpha, 0.88);
+    const grad = ctx.createLinearGradient(0, level, 0, canvas.height);
+    grad.addColorStop(0, "rgba(180,0,0,0)");
+    grad.addColorStop(0.15, "rgba(180,0,0,0.9)");
+    grad.addColorStop(1, "rgba(100,0,0,1)");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(0, level);
+    // Wavy top edge
+    const waveAmp = 8 + Math.sin(frame * 0.05) * 4;
+    for (let x = 0; x <= canvas.width; x += 20) {
+      const wave = Math.sin(x * 0.04 + frame * 0.08) * waveAmp;
+      ctx.lineTo(x, level + wave);
+    }
+    ctx.lineTo(canvas.width, canvas.height);
+    ctx.lineTo(0, canvas.height);
+    ctx.closePath();
+    ctx.fill();
+
+    // Drips from knife landing spots
+    knives.filter(k => k.landed).forEach(k => {
+      if (k.y > level + 30) return;
+      ctx.beginPath();
+      const dripH = Math.min(40, (frame - k.splashFrame) * 1.2);
+      ctx.ellipse(k.x, k.y + dripH * 0.5, 4, dripH * 0.5 + 2, 0, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(160,0,0,0.85)";
+      ctx.fill();
+    });
+    ctx.restore();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const progress = frame / maxFrames;
+
+    // Rise blood pool
+    if (bloodLevel > bloodTarget) {
+      bloodLevel -= (bloodLevel - bloodTarget) * 0.04;
+    }
+
+    // Draw blood pool
+    drawBloodPool(ctx, bloodLevel, progress * 2);
+
+    // Draw and update knives
+    knives.forEach(k => {
+      if (!k.landed) {
+        k.y += k.vy;
+        k.rot += k.vr;
+        if (k.y >= k.landY) {
+          k.landed = true;
+          k.y = k.landY;
+          k.splashFrame = frame;
+        }
+      }
+      // Fade out knives as blood rises over them
+      const kAlpha = k.y < bloodLevel + 20 ? Math.max(0, (k.y - bloodLevel) / 40) : 1;
+      ctx.globalAlpha = kAlpha;
+      drawKnife(ctx, k.x, k.y, k.rot);
+      ctx.globalAlpha = 1;
+    });
+
+    // Pulse EDGED text in
+    if (frame > 40) {
+      const textAlpha = Math.min(1, (frame - 40) / 20);
+      const fadeOut = frame > maxFrames - 40 ? Math.max(0, (maxFrames - frame) / 40) : 1;
+      edgedEl.style.opacity = textAlpha * fadeOut;
+    }
+
+    frame++;
+    if (frame < maxFrames) {
+      requestAnimationFrame(draw);
+    } else {
+      canvas.style.display = "none";
+      edgedEl.style.display = "none";
+      edgedEl.style.opacity = 0;
+    }
+  }
+  draw();
+}
+
 function getPSTDate() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
 }
@@ -759,6 +943,7 @@ function renderToday() {
 
   let anyCycleToday = false;
   let anyEagleToday = false;
+  const edgeToday = isEdge(todayRows);
   sorted.forEach(row => {
     const p = PLAYERS.find(x => x.id === row.player);
     if (!p) return;
@@ -778,18 +963,21 @@ function renderToday() {
       ? '<span class="cycle-badge">🚲 CYCLE</span>'
       : hasEagle
         ? '<span class="cycle-badge" style="background:linear-gradient(135deg,#4fc3f7,#0288d1)">🦅 EAGLE</span>'
-        : '';
+        : (isWinner && edgeToday)
+          ? '<span class="knife-badge">🔪 EDGED</span>'
+          : '';
     html += `</div><span class="lb-total" style="color:${isWinner ? '#39ff85' : '#e8eaf0'}">${rowTotal(row) || "—"}${extraBadge}</span></div>`;
   });
 
   html += '</div>';
   container.innerHTML = html;
   if (anyCycleToday || anyEagleToday) launchConfetti();
+  else if (edgeToday) launchKnives();
 }
 
 function renderStandings() {
   const winCounts = {};
-  PLAYERS.forEach(p => { winCounts[p.id] = { wins: 0, ties: 0, cycles: 0, days: 0, total: 0 }; });
+  PLAYERS.forEach(p => { winCounts[p.id] = { wins: 0, ties: 0, cycles: 0, edges: 0, days: 0, total: 0 }; });
 
   const byDate = {};
   allScores.forEach(row => {
@@ -799,10 +987,14 @@ function renderStandings() {
 
   Object.values(byDate).forEach(rows => {
     const result = dayResult(rows);
+    const edgeDay = isEdge(rows);
     result.winners.forEach(w => {
       if (!winCounts[w.player]) return;
       if (result.tied) winCounts[w.player].ties++;
-      else winCounts[w.player].wins++;
+      else {
+        winCounts[w.player].wins++;
+        if (edgeDay) winCounts[w.player].edges++;
+      }
     });
     rows.forEach(r => {
       if (winCounts[r.player]) {
@@ -829,7 +1021,7 @@ function renderStandings() {
         <span class="standings-name">${p.label}</span>
         <span class="standings-sub">${s.days} days played · avg ${avg}</span>
       </div>
-      <span class="standings-wins">${s.wins}W ${s.ties}T</span>
+      <span class="standings-wins">${s.wins}W ${s.ties}T${s.edges > 0 ? " " + s.edges + "🔪" : ""}</span>
     </div>`;
   });
   html += '</div>';
@@ -918,6 +1110,8 @@ function renderStandings() {
 </script>
 
 <canvas id="confetti-canvas" style="display:none"></canvas>
+<canvas id="knife-canvas" style="display:none"></canvas>
 
+<div id="edged-text" style="display:none"><span>EDGED</span></div>
 </body>
 </html>
