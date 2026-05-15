@@ -85,6 +85,7 @@
     #edged-text span { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 5rem; color: #ff1a1a; text-shadow: 0 0 40px #ff0000, 0 0 80px #990000; letter-spacing: -2px; transform: scaleY(1.3); display: inline-block; }
     .knife-badge { display: inline-block; background: linear-gradient(135deg, #c0392b, #7b0000); color: #fff; font-family: 'Space Mono', monospace; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-left: 6px; letter-spacing: 1px; }
     .soak-badge { display: inline-block; background: linear-gradient(135deg, #4dd0e1, #0097a7); color: #0d0f14; font-family: 'Space Mono', monospace; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-left: 6px; letter-spacing: 1px; }
+    .turd-badge { display: inline-block; background: linear-gradient(135deg, #8B4513, #3d1a00); color: #fff; font-family: 'Space Mono', monospace; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-left: 6px; letter-spacing: 1px; }
   </style>
 </head>
 <body>
@@ -180,9 +181,28 @@ function getPSTDate() {
 
 // ── Draft functions DEFINED SECOND — before they are called ──────────────────
 const DRAFT_KEY = "dg_draft";
+const PLAYER_KEY = "dg_player";
+
+function savePlayer() {
+  try { if (currentPlayer) localStorage.setItem(PLAYER_KEY, currentPlayer.id); } catch(e) {}
+}
+function restorePlayer() {
+  try {
+    const id = localStorage.getItem(PLAYER_KEY);
+    if (!id) return;
+    const p = PLAYERS.find(x => x.id === id);
+    if (p) {
+      currentPlayer = p;
+      document.querySelectorAll(".player-btn").forEach(b => {
+        if (b.querySelector(".p-label").textContent === p.label) b.classList.add("selected");
+      });
+      updateSubmitButton();
+    }
+  } catch(e) {}
+}
 function saveDraft() {
   try {
-    const draft = { date: getPSTDate(), player: currentPlayer ? currentPlayer.id : null, scores };
+    const draft = { date: getPSTDate(), scores };
     localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
   } catch(e) {}
 }
@@ -204,16 +224,6 @@ function restoreDraft() {
       });
       updatePreview();
     }
-    if (draft.player) {
-      const p = PLAYERS.find(x => x.id === draft.player);
-      if (p) {
-        currentPlayer = p;
-        document.querySelectorAll(".player-btn").forEach(b => {
-          if (b.querySelector(".p-label").textContent === p.label) b.classList.add("selected");
-        });
-        updateSubmitButton();
-      }
-    }
   } catch(e) {}
 }
 
@@ -221,6 +231,7 @@ function restoreDraft() {
 document.getElementById("today-date").textContent = new Date().toLocaleDateString("en-US", {
   weekday: "short", month: "short", day: "numeric"
 });
+restorePlayer();
 restoreDraft();
 
 // ── UI ────────────────────────────────────────────────────────────────────────
@@ -236,6 +247,7 @@ function selectPlayer(id, emoji) {
   document.querySelectorAll(".player-btn").forEach(b => b.classList.remove("selected"));
   event.currentTarget.classList.add("selected");
   updateSubmitButton();
+  savePlayer();
   saveDraft();
 }
 function manualScore(key, val) {
@@ -366,6 +378,28 @@ function isEdge(rows) {
   const ranked = [...complete].sort((a, b) => rowTotal(a) - rowTotal(b));
   return (rowTotal(ranked[1]) - rowTotal(ranked[0])) === 1;
 }
+function isDoubleEdge(rows) {
+  // 2nd must be exactly 1 behind winner, 3rd must be within 1 or 2 of winner
+  const complete = rows.filter(r => r.wordle !== null && r.framed !== null && r.heardle_90s !== null && r.heardle_00s !== null);
+  if (complete.length < 3) return false;
+  const ranked = [...complete].sort((a, b) => rowTotal(a) - rowTotal(b));
+  const gap2 = rowTotal(ranked[1]) - rowTotal(ranked[0]);
+  const gap3 = rowTotal(ranked[2]) - rowTotal(ranked[0]);
+  return gap2 === 1 && (gap3 === 1 || gap3 === 2);
+}
+function findTurdRecord(allScoresData) {
+  // Returns { player, score_date, total } for all-time worst (highest) total
+  // Partial submissions count
+  let worst = null;
+  allScoresData.forEach(r => {
+    const t = rowTotal(r);
+    if (t > 0 && (!worst || t >= worst.total)) {
+      worst = { player: r.player, score_date: r.score_date, total: t, row: r };
+    }
+  });
+  return worst;
+}
+
 function numEmoji(n) {
   const map = {"0":"0️⃣","1":"1️⃣","2":"2️⃣","3":"3️⃣","4":"4️⃣","5":"5️⃣","6":"6️⃣","7":"7️⃣","8":"8️⃣","9":"9️⃣"};
   return String(n).split("").map(d => map[d] || d).join("");
@@ -495,7 +529,10 @@ function renderToday() {
   }
   html += '</div>';
   let anyCycleToday = false, anyEagleToday = false;
-  const edgeToday = isEdge(todayRows);
+  const doubleEdgeToday = isDoubleEdge(todayRows);
+  const edgeToday = !doubleEdgeToday && isEdge(todayRows);
+  const turdRecord = findTurdRecord(allScores);
+  const todayMax = Math.max(...sorted.map(r => rowTotal(r)));
   sorted.forEach(row => {
     const p = PLAYERS.find(x => x.id === row.player); if (!p) return;
     const isWinner = winnerIds.includes(row.player);
@@ -506,9 +543,13 @@ function renderToday() {
     const hasEagle = !hasCycle && rowTotal(row) < 10 && rowTotal(row) > 0 && row.wordle !== null && row.framed !== null && row.heardle_90s !== null && row.heardle_00s !== null;
     if (hasEagle) anyEagleToday = true;
     const playerStreak = streaks[row.player] ? streaks[row.player].current : 0;
+    const isTurdToday = rowTotal(row) === todayMax && rowTotal(row) > 0 &&
+      turdRecord && rowTotal(row) >= turdRecord.total;
     const extraBadge = hasCycle ? '<span class="cycle-badge">🚲 CYCLE</span>'
       : hasEagle ? '<span class="cycle-badge" style="background:linear-gradient(135deg,#4fc3f7,#0288d1)">🦅 EAGLE</span>'
+      : (isWinner && doubleEdgeToday) ? '<span class="knife-badge">⚔️ DOUBLE EDGED</span>'
       : (isWinner && edgeToday) ? '<span class="knife-badge">🔪 EDGED</span>'
+      : isTurdToday ? '<span class="turd-badge">💩 TURD</span>'
       : playerStreak >= 3 ? `<span class="soak-badge">🛁${numEmoji(playerStreak)}</span>`
       : '';
     html += `</div><span class="lb-total" style="color:${isWinner ? '#39ff85' : '#e8eaf0'}">${rowTotal(row) || "—"}${extraBadge}</span></div>`;
@@ -516,12 +557,12 @@ function renderToday() {
   html += '</div>';
   container.innerHTML = html;
   if (anyCycleToday || anyEagleToday) launchConfetti();
-  else if (edgeToday) launchKnives();
+  else if (doubleEdgeToday || edgeToday) launchKnives();
 }
 
 function renderStandings() {
   const winCounts = {};
-  PLAYERS.forEach(p => { winCounts[p.id] = { wins: 0, ties: 0, cycles: 0, edges: 0, days: 0, total: 0 }; });
+  PLAYERS.forEach(p => { winCounts[p.id] = { wins: 0, ties: 0, cycles: 0, edges: 0, doubleEdges: 0, days: 0, total: 0 }; });
   const streakData = calcStreaks(allScores);
   const byDate = {};
   allScores.forEach(row => { if (!byDate[row.score_date]) byDate[row.score_date] = []; byDate[row.score_date].push(row); });
@@ -531,7 +572,11 @@ function renderStandings() {
     result.winners.forEach(w => {
       if (!winCounts[w.player]) return;
       if (result.tied) winCounts[w.player].ties++;
-      else { winCounts[w.player].wins++; if (edgeDay) winCounts[w.player].edges++; }
+      else {
+        winCounts[w.player].wins++;
+        if (isDoubleEdge(rows)) winCounts[w.player].doubleEdges++;
+        else if (edgeDay) winCounts[w.player].edges++;
+      }
     });
     rows.forEach(r => {
       if (winCounts[r.player]) { winCounts[r.player].days++; winCounts[r.player].total += rowTotal(r); if (isCycle(r)) winCounts[r.player].cycles++; }
@@ -542,7 +587,7 @@ function renderStandings() {
   sorted.forEach((p, i) => {
     const s = winCounts[p.id];
     const avg = s.days > 0 ? (s.total / s.days).toFixed(1) : "—";
-    html += `<div class="standings-row"><span class="standings-rank">#${i+1}</span><span class="standings-emoji">${p.emoji}</span><div class="standings-stats"><span class="standings-name">${p.label}</span><span class="standings-sub">${s.days} days played · avg ${avg}</span></div><span class="standings-wins">${s.wins}W ${s.ties}T${s.edges > 0 ? " " + s.edges + "🔪" : ""}</span></div>`;
+    html += `<div class="standings-row"><span class="standings-rank">#${i+1}</span><span class="standings-emoji">${p.emoji}</span><div class="standings-stats"><span class="standings-name">${p.label}</span><span class="standings-sub">${s.days} days played · avg ${avg}</span></div><span class="standings-wins">${s.wins}W ${s.ties}T${s.edges > 0 ? " " + s.edges + "🔪" : ""}${s.doubleEdges > 0 ? " " + s.doubleEdges + "⚔️" : ""}</span></div>`;
   });
   html += '</div>';
   html += '<div class="lb-section-title" style="margin-top:20px">Per-game averages</div><div class="standings-card">';
@@ -588,6 +633,42 @@ function renderStandings() {
     });
   })();
   PLAYERS.forEach(p => { const sd = streakData[p.id]; if (!sd) return; sd.soakStartDates.forEach(date => { const finalLen = soakLengths[p.id + "_" + date] || 3; hofEntries.push({ date, label: `${p.emoji} ${p.label}`, badge: "🛁 SOAK", badgeStyle: "background:linear-gradient(135deg,#4dd0e1,#0097a7)", sub: `${numEmoji(finalLen)} day soak` }); }); });
+
+  // Turds — every time all-time worst is matched or broken
+  let runningWorst = 0;
+  allScores.slice().sort((a, b) => a.score_date.localeCompare(b.score_date)).forEach(r => {
+    const t = rowTotal(r);
+    if (t > 0 && t >= runningWorst) {
+      const p = PLAYERS.find(x => x.id === r.player);
+      if (p) {
+        hofEntries.push({
+          date: r.score_date,
+          label: `${p.emoji} ${p.label}`,
+          badge: "💩 TURD",
+          badgeStyle: "background:linear-gradient(135deg,#8B4513,#3d1a00)",
+          sub: `Total: ${t} · ` + GAMES.map(g => `${g.abbr}${formatScore(r[g.key])}`).join(" ")
+        });
+        if (t > runningWorst) runningWorst = t;
+      }
+    }
+  });
+
+  // Double edges — every day it occurred
+  Object.entries(byDate).forEach(([date, rows]) => {
+    if (!isDoubleEdge(rows)) return;
+    const complete = rows.filter(r => r.wordle !== null && r.framed !== null && r.heardle_90s !== null && r.heardle_00s !== null);
+    const ranked = [...complete].sort((a, b) => rowTotal(a) - rowTotal(b));
+    const winner = PLAYERS.find(x => x.id === ranked[0].player);
+    if (!winner) return;
+    const scores_str = ranked.map((r, i) => { const p = PLAYERS.find(x => x.id === r.player); return `${p?.emoji}${rowTotal(r)}`; }).join(" > ");
+    hofEntries.push({
+      date,
+      label: `${winner.emoji} ${winner.label}`,
+      badge: "⚔️ DOUBLE EDGED",
+      badgeStyle: "background:linear-gradient(135deg,#c0392b,#7b0000)",
+      sub: scores_str
+    });
+  });
 
   hofEntries.sort((a, b) => b.date.localeCompare(a.date));
   if (hofEntries.length > 0) {
