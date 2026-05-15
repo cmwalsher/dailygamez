@@ -582,12 +582,19 @@ function renderStandings() {
       if (winCounts[r.player]) { winCounts[r.player].days++; winCounts[r.player].total += rowTotal(r); if (isCycle(r)) winCounts[r.player].cycles++; }
     });
   });
-  const sorted = [...PLAYERS].sort((a, b) => { const d = winCounts[b.id].wins - winCounts[a.id].wins; return d !== 0 ? d : winCounts[b.id].ties - winCounts[a.id].ties; });
+  const winPct = (id) => {
+    const s = winCounts[id];
+    if (s.days === 0) return 0;
+    return (s.wins + s.ties * 0.5) / s.days;
+  };
+  const sorted = [...PLAYERS].sort((a, b) => winPct(b.id) - winPct(a.id));
   let html = '<div class="lb-section-title">All-time wins</div><div class="standings-card">';
   sorted.forEach((p, i) => {
     const s = winCounts[p.id];
     const avg = s.days > 0 ? (s.total / s.days).toFixed(1) : "—";
-    html += `<div class="standings-row"><span class="standings-rank">#${i+1}</span><span class="standings-emoji">${p.emoji}</span><div class="standings-stats"><span class="standings-name">${p.label}</span><span class="standings-sub">${s.days} days played · avg ${avg}</span></div><span class="standings-wins">${s.wins}W ${s.ties}T${s.edges > 0 ? " " + s.edges + "🔪" : ""}${s.doubleEdges > 0 ? " " + s.doubleEdges + "⚔️" : ""}</span></div>`;
+    const pct = winPct(p.id);
+    const pctStr = s.days > 0 ? (pct * 100).toFixed(1) + "%" : "—";
+    html += `<div class="standings-row"><span class="standings-rank">#${i+1}</span><span class="standings-emoji">${p.emoji}</span><div class="standings-stats"><span class="standings-name">${p.label}</span><span class="standings-sub">${s.days} days · avg ${avg} · <span style="color:#39ff85">${pctStr}</span></span></div><span class="standings-wins">${s.wins}W ${s.ties}T${s.edges > 0 ? " " + s.edges + "🔪" : ""}${s.doubleEdges > 0 ? " " + s.doubleEdges + "⚔️" : ""}</span></div>`;
   });
   html += '</div>';
   html += '<div class="lb-section-title" style="margin-top:20px">Per-game averages</div><div class="standings-card">';
